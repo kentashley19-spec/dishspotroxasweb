@@ -1,0 +1,95 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and preferences",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "favorites": { "type": "array", "items": { "type": "string" } },
+        "preferences": {
+          "type": "object",
+          "properties": {
+            "budget": { "type": "string", "enum": ["budget", "moderate", "premium"] },
+            "categories": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      },
+      "required": ["id", "name", "email"]
+    },
+    "Restaurant": {
+      "title": "Restaurant",
+      "description": "Local eatery information",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "location": {
+          "type": "object",
+          "properties": {
+            "lat": { "type": "number" },
+            "lng": { "type": "number" },
+            "address": { "type": "string" }
+          }
+        },
+        "price_range": { "type": "string", "enum": ["budget", "moderate", "premium"] },
+        "categories": { "type": "array", "items": { "type": "string" } },
+        "rating": { "type": "number" },
+        "image": { "type": "string" },
+        "description": { "type": "string" },
+        "views": { "type": "number" }
+      },
+      "required": ["id", "name", "location", "price_range", "categories"]
+    },
+    "Dish": {
+      "title": "Dish",
+      "description": "Food item offered by a restaurant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "restaurant_id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "image": { "type": "string" },
+        "isTrending": { "type": "boolean" }
+      },
+      "required": ["id", "restaurant_id", "name", "price", "tags"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "User review for a restaurant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "restaurant_id": { "type": "string" },
+        "user_id": { "type": "string" },
+        "user_name": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "restaurant_id", "user_id", "rating", "comment"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles"
+    },
+    "/restaurants/{restaurantId}": {
+      "schema": "Restaurant",
+      "description": "Restaurant listings"
+    },
+    "/restaurants/{restaurantId}/dishes/{dishId}": {
+      "schema": "Dish",
+      "description": "Dishes per restaurant"
+    },
+    "/restaurants/{restaurantId}/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Reviews per restaurant"
+    }
+  }
+}

@@ -1,0 +1,127 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - id: string (required)
+    //   - name: string (required)
+    //   - email: string (required, email format)
+    //   - favorites: list (optional)
+    //   - preferences: map (optional)
+    //
+    // Collection: restaurants
+    // Document ID: {restaurantId}
+    // Fields:
+    //   - id: string (required)
+    //   - name: string (required)
+    //   - location: map (required, lat/lng/address)
+    //   - price_range: string (required, budget/moderate/premium)
+    //   - categories: list (required)
+    //   - rating: number (optional)
+    //   - image: string (optional)
+    //   - description: string (optional)
+    //   - views: number (optional)
+    //
+    // Collection: dishes (subcollection of restaurants)
+    // Document ID: {dishId}
+    // Fields:
+    //   - id: string (required)
+    //   - restaurant_id: string (required)
+    //   - name: string (required)
+    //   - price: number (required)
+    //   - tags: list (required)
+    //   - image: string (optional)
+    //   - isTrending: bool (optional)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "CelineGranza@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'name', 'email']) &&
+             data.id is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.email is string && data.email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidRestaurant(data) {
+      return data.keys().hasAll(['id', 'name', 'location', 'price_range', 'categories']) &&
+             data.id is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.location is map &&
+             data.price_range in ['budget', 'moderate', 'premium'] &&
+             data.categories is list && data.categories.size() > 0;
+    }
+
+    function isValidDish(data) {
+      return data.keys().hasAll(['id', 'restaurant_id', 'name', 'price', 'tags']) &&
+             data.id is string &&
+             data.restaurant_id is string &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 200 &&
+             data.price is number && data.price >= 0 &&
+             data.tags is list;
+    }
+
+    function isValidReview(data) {
+      return data.keys().hasAll(['restaurantId', 'userId', 'userName', 'rating', 'comment', 'createdAt']) &&
+             data.restaurantId is string &&
+             data.userId == request.auth.uid &&
+             data.userName is string &&
+             data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+             data.comment is string && data.comment.size() > 0 && data.comment.size() < 2000;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isAuthenticated() && isOwner(userId) && isValidUser(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    match /restaurants/{restaurantId} {
+      allow read: if true; // Publicly readable
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || 
+                    (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['views']) && 
+                     request.resource.data.views == resource.data.views + 1) ||
+                    (request.resource.data.diff(resource.data).affectedKeys().hasAny(['rating', 'reviewCount', 'totalRatingSum']) &&
+                     isAuthenticated()); 
+      
+      match /dishes/{dishId} {
+        allow read: if true; // Publicly readable
+        allow create, update, delete: if isAdmin();
+      }
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && isValidReview(request.resource.data);
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+    }
+  }
+}

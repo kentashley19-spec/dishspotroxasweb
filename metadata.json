@@ -1,0 +1,5 @@
+{
+  "name": "DishSpotRoxas",
+  "description": "A machine learning–driven recommendation website for local food and eateries in Roxas, Oriental Mindoro.",
+  "requestFramePermissions": ["geolocation"]
+}
